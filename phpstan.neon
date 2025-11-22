@@ -1,0 +1,18 @@
+parameters:
+	level: 5
+	paths:
+		- .
+	excludePaths:
+		- node_modules
+		- build
+		- dist
+		- vendor
+		- tests
+	ignoreErrors:
+		- '#Call to an undefined method WP_Query::.*#'
+		- '#Call to an undefined method WP_Post::.*#'
+		- '#Access to an undefined property WP_Query::.*#'
+		- '#Access to an undefined property WP_Post::.*#'
+	checkMissingIterableValueType: false
+
+

@@ -1,0 +1,23 @@
+/**
+ * Editor styles for Gallery Quest block.
+ *
+ * @package GalleryQuest
+ */
+
+.gallery-quest-editor-preview {
+	padding: 1rem;
+	border: 1px dashed #ccc;
+	border-radius: 4px;
+	background: #f9f9f9;
+
+	h3 {
+		margin-top: 0;
+		margin-bottom: 0.5rem;
+	}
+
+	p {
+		margin: 0;
+		color: #666;
+		font-size: 0.9rem;
+	}
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.5/phpunit.xsd"
+	bootstrap="tests/php/bootstrap.php"
+	colors="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	beStrictAboutOutputDuringTests="true"
+	beStrictAboutChangesToGlobalState="true"
+	verbose="true"
+>
+	<testsuites>
+		<testsuite name="Gallery Quest Tests">
+			<directory>tests/php</directory>
+		</testsuite>
+	</testsuites>
+	<coverage>
+		<include>
+			<directory suffix=".php">includes</directory>
+			<directory suffix=".php">admin</directory>
+			<file>gallery-quest.php</file>
+		</include>
+		<exclude>
+			<directory>node_modules</directory>
+			<directory>build</directory>
+			<directory>dist</directory>
+			<directory>vendor</directory>
+			<directory>tests</directory>
+		</exclude>
+	</coverage>
+</phpunit>
+
+

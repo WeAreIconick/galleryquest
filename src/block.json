@@ -1,0 +1,52 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "gallery-quest/gallery-quest",
+	"version": "1.0.0",
+	"title": "Gallery Quest",
+	"category": "media",
+	"icon": "format-gallery",
+	"description": "Display a filterable gallery with images that can be filtered by character, artist, and rarity.",
+	"example": {},
+	"attributes": {
+		"galleryId": {
+			"type": "number",
+			"default": 0
+		},
+		"itemCount": {
+			"type": "number",
+			"default": 20
+		},
+		"columns": {
+			"type": "number",
+			"default": 3
+		},
+		"showFilters": {
+			"type": "boolean",
+			"default": true
+		},
+		"filterLogic": {
+			"type": "string",
+			"enum": ["AND", "OR"],
+			"default": "OR"
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": ["wide", "full"],
+		"color": {
+			"text": true,
+			"background": true
+		},
+		"spacing": {
+			"padding": true,
+			"margin": true
+		}
+	},
+	"textdomain": "gallery-quest",
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./index.css",
+	"style": "file:./style-index.css",
+	"render": "file:./render.php",
+	"viewScript": "file:./view.js"
+}
