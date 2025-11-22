@@ -1,0 +1,104 @@
+.gallery-quest-taxonomy-select {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid #8c8f94;
+	border-radius: 3px;
+	font-size: 14px;
+	line-height: 1.5;
+	background-color: #fff;
+}
+.gallery-quest-taxonomy-select:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+.gallery-quest-taxonomy-select option {
+	padding: 4px 8px;
+}
+.gallery-quest-taxonomy-select option:checked {
+	background-color: #2271b1;
+	color: #fff;
+}
+.gallery-quest-tags-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+	min-height: 32px;
+}
+.gallery-quest-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 8px;
+	background: #2271b1;
+	color: #fff;
+	border-radius: 3px;
+	font-size: 13px;
+	line-height: 1.4;
+}
+.gallery-quest-tag-remove {
+	background: transparent;
+	border: none;
+	color: #fff;
+	cursor: pointer;
+	margin-left: 6px;
+	padding: 0;
+	font-size: 16px;
+	line-height: 1;
+	width: 16px;
+	height: 16px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 2px;
+}
+.gallery-quest-tag-remove:hover {
+	background: rgba(255, 255, 255, 0.2);
+}
+.gallery-quest-taxonomy-input {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid #8c8f94;
+	border-radius: 3px;
+	font-size: 14px;
+}
+.gallery-quest-taxonomy-input:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}
+.gallery-quest-autocomplete {
+	position: absolute;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	list-style: none;
+	margin: 0;
+	padding: 4px 0;
+	max-height: 200px;
+	overflow-y: auto;
+	z-index: 100000;
+}
+.gallery-quest-autocomplete-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 14px;
+}
+.gallery-quest-autocomplete-item:hover,
+.gallery-quest-autocomplete-item:focus {
+	background: #f0f0f1;
+}
+.gallery-quest-card-number-input {
+	width: 100%;
+	padding: 6px 8px;
+	border: 1px solid #8c8f94;
+	border-radius: 3px;
+	font-size: 14px;
+	max-width: 200px;
+}
+.gallery-quest-card-number-input:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: none;
+}

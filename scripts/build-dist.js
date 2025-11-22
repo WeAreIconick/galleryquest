@@ -128,6 +128,16 @@ function buildDist() {
 		path.join(adminJsDist, 'attachment-fields.js')
 	);
 
+	// Copy admin CSS
+	const adminCssDist = path.join(adminDist, 'css');
+	fs.mkdirSync(adminCssDist, { recursive: true });
+	if (fs.existsSync(path.join(PLUGIN_DIR, 'admin/css'))) {
+		copyItem(
+			path.join(PLUGIN_DIR, 'admin/css'),
+			adminCssDist
+		);
+	}
+
 	// Copy built files from build/ to dist/build/
 	console.log('📦 Copying built assets...');
 
