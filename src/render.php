@@ -28,9 +28,13 @@ if ( ! in_array( $gallery_quest_filter_logic, array( 'AND', 'OR' ), true ) ) {
 // Validate columns.
 $gallery_quest_columns = max( 1, min( 6, $gallery_quest_columns ) );
 
+// Generate unique ID for this block instance.
+$gallery_quest_unique_id = uniqid( 'gallery-quest-' );
+
 // Get block wrapper attributes.
 $gallery_quest_wrapper_attributes = get_block_wrapper_attributes(
 	array(
+		'id'               => $gallery_quest_unique_id,
 		'class'            => "gallery-quest-block gallery-quest-columns-{$gallery_quest_columns}",
 		'data-gallery-id'  => $gallery_quest_gallery_id,
 		'data-filter-logic' => $gallery_quest_filter_logic,
@@ -216,6 +220,7 @@ if ( $gallery_quest_show_filters && $gallery_quest_query->have_posts() ) {
 						class="gallery-quest-item-link"
 						data-title="<?php echo esc_attr( $gallery_quest_title ); ?>"
 						data-description="<?php echo esc_attr( $gallery_quest_alt_text ); ?>"
+						data-gallery="<?php echo esc_attr( $gallery_quest_unique_id ); ?>"
 					>
 						<?php
 						echo wp_get_attachment_image(

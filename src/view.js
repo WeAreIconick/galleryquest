@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	galleryBlocks.forEach((block) => {
 		const { galleryId } = block.dataset;
+		const blockId = block.id;
 		const showFilters = block.dataset.showFilters === 'true';
 		const filterLogic = block.dataset.filterLogic || 'OR';
 
@@ -23,8 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		// Initialize GLightbox.
+		// Use the block ID to scope the selector to this specific block.
+		// This prevents issues with multiple galleries on the same page.
 		const lightbox = GLightbox({
-			selector: `.gallery-quest-block[data-gallery-id="${ galleryId }"] .gallery-quest-item-link`,
+			selector: `#${blockId} .gallery-quest-item-link`,
 			touchNavigation: true,
 			loop: true,
 			zoomable: true,
