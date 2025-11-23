@@ -51,6 +51,8 @@ function initGalleryQuest() {
 					pswpModule: () => import('photoswipe'),
 					arrowPrev: false,
 					arrowNext: false,
+					counter: false,
+					zoom: false,
 					loop: false,
 					paddingFn: (viewportSize) => {
 						return {
@@ -90,7 +92,6 @@ window.addEventListener('load', initGalleryQuest);
 function initFiltering(block, galleryId, filterLogic) {
 	const filterSelects = block.querySelectorAll('.gallery-quest-filter-select');
 	const clearButton = block.querySelector('.gallery-quest-clear-filters');
-	const resultsCount = block.querySelector('.gallery-quest-results-count');
 	const galleryGrid = block.querySelector('.gallery-quest-grid');
 
 	if (!filterSelects.length || !galleryGrid) {
@@ -166,11 +167,6 @@ function initFiltering(block, galleryId, filterLogic) {
 				item.style.display = 'none';
 			}
 		});
-
-		// Update results count.
-		if (resultsCount) {
-			resultsCount.textContent = `Showing ${ visibleCount } images`;
-		}
 	}
 
 	// Add change handlers to filter selects.
