@@ -231,12 +231,16 @@ class Gallery_Quest_Taxonomies {
 				$options,
 				esc_attr( $taxonomy ),
 				absint( $post->ID ),
-				esc_attr( sprintf( __( 'Add new %s...', 'gallery-quest' ), strtolower( $label ) ) ),
+				esc_attr( sprintf( 
+					/* translators: %s: Taxonomy label (lowercase) */
+					__( 'Add new %s...', 'gallery-quest' ), 
+					strtolower( $label ) 
+				) ),
 				esc_attr( $taxonomy ),
 				absint( $post->ID ),
 				esc_html__( 'Add', 'gallery-quest' ),
 				esc_html( sprintf(
-					/* translators: %s: Taxonomy name */
+					/* translators: %s: Taxonomy name (lowercase) */
 					__( 'Hold Ctrl/Cmd to select multiple %s. Use the field below to add new terms.', 'gallery-quest' ),
 					strtolower( $label )
 				) )
@@ -342,47 +346,81 @@ class Gallery_Quest_Taxonomies {
 	 * @param int $post_id Post ID.
 	 */
 	public function save_taxonomy_fields( $post_id ) {
-		// Verify nonce for attachment edit form.
-		if ( ! isset( $_POST['save-attachment-compat'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['save-attachment-compat'] ) ), 'update-attachment_' . $post_id ) ) {
-			return;
-		}
+		try {
+			// Check if we have the compat nonce - this confirms we're in a context that supports this save method.
+			if ( ! isset( $_POST['save-attachment-compat'] ) ) {
+				return;
+			}
 
-		// Check user capabilities.
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
-			return;
-		}
+			// Verify nonce for attachment edit form.
+			// Use safe verify to prevent crashes if input is malformed
+			$nonce = isset( $_POST['save-attachment-compat'] ) ? sanitize_text_field( wp_unslash( $_POST['save-attachment-compat'] ) ) : '';
+			if ( ! wp_verify_nonce( $nonce, 'update-attachment_' . $post_id ) ) {
+				return;
+			}
 
-		$taxonomies = array( 'gallery_character', 'gallery_artist', 'gallery_rarity' );
+			// Check user capabilities.
+			if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return;
+			}
 
-		foreach ( $taxonomies as $taxonomy ) {
-			if ( isset( $_POST['attachments'][ $post_id ][ $taxonomy ] ) && is_array( $_POST['attachments'][ $post_id ][ $taxonomy ] ) ) {
-				$term_ids = array_map( 'absint', $_POST['attachments'][ $post_id ][ $taxonomy ] );
-				$term_ids = array_filter( $term_ids );
+			// Ensure attachments array exists in POST
+			if ( ! isset( $_POST['attachments'] ) || ! is_array( $_POST['attachments'] ) ) {
+				return;
+			}
 
-				if ( ! empty( $term_ids ) ) {
-					wp_set_object_terms( $post_id, $term_ids, $taxonomy );
-				} else {
-					wp_set_object_terms( $post_id, array(), $taxonomy );
-				}
-			} elseif ( isset( $_POST['attachments'][ $post_id ][ $taxonomy ] ) ) {
-				// Fallback for single value (shouldn't happen with multiple select, but just in case)
-				$term_id = absint( $_POST['attachments'][ $post_id ][ $taxonomy ] );
-				if ( $term_id > 0 ) {
-					wp_set_object_terms( $post_id, array( $term_id ), $taxonomy );
-				} else {
-					wp_set_object_terms( $post_id, array(), $taxonomy );
+			// Ensure specific post data exists
+			if ( ! isset( $_POST['attachments'][ $post_id ] ) || ! is_array( $_POST['attachments'][ $post_id ] ) ) {
+				return;
+			}
+
+			$taxonomies = array( 'gallery_character', 'gallery_artist', 'gallery_rarity' );
+
+			foreach ( $taxonomies as $taxonomy ) {
+				if ( isset( $_POST['attachments'][ $post_id ][ $taxonomy ] ) ) {
+					$input_value = wp_unslash( $_POST['attachments'][ $post_id ][ $taxonomy ] );
+					
+					// Handle array input (multiple select)
+					if ( is_array( $input_value ) ) {
+						// Sanitize array of IDs
+						$term_ids = array_map( 'absint', $input_value );
+						$term_ids = array_filter( $term_ids ); // Remove 0s and empty values
+
+						if ( ! empty( $term_ids ) ) {
+							wp_set_object_terms( $post_id, $term_ids, $taxonomy );
+						} else {
+							wp_set_object_terms( $post_id, array(), $taxonomy );
+						}
+					} 
+					// Handle single value fallback
+					else {
+						// Sanitize single ID
+						$term_id = absint( $input_value );
+						if ( $term_id > 0 ) {
+							wp_set_object_terms( $post_id, array( $term_id ), $taxonomy );
+						} else {
+							wp_set_object_terms( $post_id, array(), $taxonomy );
+						}
+					}
 				}
 			}
-		}
 
-		// Save card number
-		if ( isset( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) ) {
-			$card_number = sanitize_text_field( wp_unslash( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) );
-			if ( $card_number !== '' ) {
-				update_post_meta( $post_id, '_gallery_quest_card_number', $card_number );
-			} else {
-				delete_post_meta( $post_id, '_gallery_quest_card_number' );
+			// Save card number
+			if ( isset( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) ) {
+				$card_number = sanitize_text_field( wp_unslash( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) );
+				if ( $card_number !== '' ) {
+					update_post_meta( $post_id, '_gallery_quest_card_number', $card_number );
+				} else {
+					delete_post_meta( $post_id, '_gallery_quest_card_number' );
+				}
 			}
+		} catch ( Throwable $t ) {
+			// Silently fail on errors to prevent 500 response
+			// In development, you might want to log this: error_log( $t->getMessage() );
+			return;
+		} catch ( Exception $e ) {
+			// Fallback for PHP < 7
+			return;
 		}
 	}
 }

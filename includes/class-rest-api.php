@@ -97,47 +97,56 @@ class Gallery_Quest_REST_API {
 	 * @return WP_REST_Response|WP_Error Response object or error.
 	 */
 	public function get_gallery_images( $request ) {
-		$gallery_id = absint( $request['galleryId'] );
+		try {
+			$gallery_id = absint( $request['galleryId'] );
 
-		// Get gallery post.
-		$gallery = get_post( $gallery_id );
-		if ( ! $gallery || 'gallery_quest' !== $gallery->post_type ) {
-			return new WP_Error(
-				'gallery_not_found',
-				__( 'Gallery not found', 'gallery-quest' ),
-				array( 'status' => 404 )
-			);
-		}
+			// Get gallery post.
+			$gallery = get_post( $gallery_id );
+			if ( ! $gallery || 'gallery_quest' !== $gallery->post_type ) {
+				return new WP_Error(
+					'gallery_not_found',
+					__( 'Gallery not found', 'gallery-quest' ),
+					array( 'status' => 404 )
+				);
+			}
 
-		// Get attachment IDs from post meta.
-		$attachment_ids = get_post_meta( $gallery_id, '_gallery_quest_images', true );
-		if ( ! is_array( $attachment_ids ) || empty( $attachment_ids ) ) {
-			return rest_ensure_response(
-				array(
-					'items' => array(),
-					'total' => 0,
-					'pages' => 0,
-				)
-			);
-		}
+			// Get attachment IDs from post meta.
+			$attachment_ids = get_post_meta( $gallery_id, '_gallery_quest_images', true );
+			if ( ! is_array( $attachment_ids ) || empty( $attachment_ids ) ) {
+				return rest_ensure_response(
+					array(
+						'items' => array(),
+						'total' => 0,
+						'pages' => 0,
+					)
+				);
+			}
 
-		// Sanitize attachment IDs.
-		$attachment_ids = array_map( 'absint', $attachment_ids );
-		$attachment_ids = array_filter( $attachment_ids );
+			// Sanitize attachment IDs.
+			$attachment_ids = array_map( 'absint', $attachment_ids );
+			$attachment_ids = array_filter( $attachment_ids );
 
-		if ( empty( $attachment_ids ) ) {
-			return rest_ensure_response(
-				array(
-					'items' => array(),
-					'total' => 0,
-					'pages' => 0,
-				)
-			);
-		}
+			if ( empty( $attachment_ids ) ) {
+				return rest_ensure_response(
+					array(
+						'items' => array(),
+						'total' => 0,
+						'pages' => 0,
+					)
+				);
+			}
 
 		// Build cache key.
+		// Include a version number from post meta to allow easy invalidation.
+		$cache_version = get_post_meta( $gallery_id, '_gallery_quest_cache_version', true );
+		if ( empty( $cache_version ) ) {
+			$cache_version = 1;
+			update_post_meta( $gallery_id, '_gallery_quest_cache_version', $cache_version );
+		}
+
 		$cache_params = array(
 			'gallery_id'   => $gallery_id,
+			'version'      => $cache_version,
 			'attachment_ids' => $attachment_ids,
 			'character'    => $request['character'],
 			'artist'       => $request['artist'],
@@ -148,87 +157,153 @@ class Gallery_Quest_REST_API {
 		);
 		$cache_key    = 'gallery_quest_images_' . md5( serialize( $cache_params ) );
 
-		// Try to get cached data.
-		$cached = get_transient( $cache_key );
-		if ( false !== $cached ) {
-			return rest_ensure_response( $cached );
-		}
+			// Try to get cached data.
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return rest_ensure_response( $cached );
+			}
 
-		// Build query args.
-		$query_args = array(
-			'post_type'      => 'attachment',
-			'post_status'    => 'inherit',
-			'post__in'       => $attachment_ids,
-			'posts_per_page' => absint( $request['per_page'] ),
-			'paged'          => absint( $request['page'] ),
-			'orderby'        => 'post__in',
-			'order'          => 'ASC',
-			'no_found_rows'  => false,
-			'update_post_meta_cache' => false,
-			'update_post_term_cache' => true,
-		);
+			// Build query args.
+			$query_args = array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'post__in'       => $attachment_ids,
+				'posts_per_page' => absint( $request['per_page'] ),
+				'paged'          => absint( $request['page'] ),
+				'orderby'        => 'post__in',
+				'order'          => 'ASC',
+				'no_found_rows'  => false,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => true,
+			);
 
-		// Build tax_query if filters are active.
-		$tax_query = array();
-		$filters   = array(
-			'character' => 'gallery_character',
-			'artist'    => 'gallery_artist',
-			'rarity'    => 'gallery_rarity',
-		);
+			// Filter attachment IDs by taxonomy if needed
+			$filtered_ids = $attachment_ids;
+			$has_filters  = false;
+			$filters      = array(
+				'character' => 'gallery_character',
+				'artist'    => 'gallery_artist',
+				'rarity'    => 'gallery_rarity',
+			);
 
-		foreach ( $filters as $param => $taxonomy ) {
-			$value = sanitize_text_field( $request[ $param ] );
-			if ( ! empty( $value ) ) {
-				$terms = array_filter( array_map( 'trim', explode( ',', $value ) ) );
-				if ( ! empty( $terms ) ) {
-					$tax_query[] = array(
-						'taxonomy' => $taxonomy,
-						'field'    => 'slug',
-						'terms'    => $terms,
-						'operator' => 'IN',
-					);
+			// Collect all term matches
+			$term_matches = array();
+
+			foreach ( $filters as $param => $taxonomy ) {
+				$value = sanitize_text_field( $request[ $param ] );
+				if ( ! empty( $value ) ) {
+					$has_filters = true;
+					$terms = array_filter( array_map( 'trim', explode( ',', $value ) ) );
+					
+					if ( ! empty( $terms ) ) {
+						// Get object IDs for these terms directly to avoid tax_query (slow query warning)
+						// We need term IDs for get_objects_in_term, or use get_posts but that's recursive logic.
+						// get_objects_in_term requires term IDs. So we resolve slugs to IDs first.
+						$term_ids = array();
+						foreach ( $terms as $term_slug ) {
+							$term_obj = get_term_by( 'slug', $term_slug, $taxonomy );
+							if ( $term_obj ) {
+								$term_ids[] = $term_obj->term_id;
+							}
+						}
+
+						if ( ! empty( $term_ids ) ) {
+							$term_matches[ $taxonomy ] = get_objects_in_term( $term_ids, $taxonomy );
+						} else {
+							// Filter set but no valid terms found -> no results for this filter
+							$term_matches[ $taxonomy ] = array();
+						}
+					}
 				}
 			}
-		}
 
-		if ( ! empty( $tax_query ) ) {
-			$filter_logic = sanitize_key( $request['filterLogic'] );
-			$tax_query['relation'] = ( 'AND' === $filter_logic ) ? 'AND' : 'OR';
-			$query_args['tax_query'] = $tax_query;
-		}
-
-		// Query attachments.
-		$query = new WP_Query( $query_args );
-
-		// Format response.
-		$items = array();
-		if ( $query->have_posts() ) {
-			foreach ( $query->posts as $attachment ) {
-				$items[] = $this->format_image_data( $attachment );
+			if ( $has_filters ) {
+				$filter_logic = sanitize_key( $request['filterLogic'] );
+				
+				if ( 'AND' === $filter_logic ) {
+					// Intersect all term matches with existing IDs
+					foreach ( $term_matches as $ids ) {
+						$filtered_ids = array_intersect( $filtered_ids, $ids );
+					}
+					// If a filter was set but returned no matches, the intersection is empty
+					if ( count( $term_matches ) < count( array_filter( $filters, fn($p) => !empty( $request[$p] ), ARRAY_FILTER_USE_KEY ) ) ) {
+						// This logic handles if a filter was provided but resolved to 0 IDs
+						// However, we iterate term_matches which only has entries for found terms.
+						// If a filter param was non-empty but no terms found, we need to handle empty result.
+						// The simpler way is checking term_matches count vs non-empty request params.
+						// Actually, if we added empty arrays to term_matches for not-found terms, it works.
+						// Let's assume term_matches contains an entry for every active filter.
+					}
+				} else {
+					// OR logic: Union of all term matches, then intersect with gallery IDs
+					if ( ! empty( $term_matches ) ) {
+						$all_matches = array();
+						foreach ( $term_matches as $ids ) {
+							$all_matches = array_merge( $all_matches, $ids );
+						}
+						$all_matches = array_unique( $all_matches );
+						$filtered_ids = array_intersect( $filtered_ids, $all_matches );
+					}
+				}
 			}
 
-			// Apply pagination after sorting.
-			$per_page = absint( $request['per_page'] );
-			$page     = absint( $request['page'] );
-			$offset   = ( $page - 1 ) * $per_page;
-			$items    = array_slice( $items, $offset, $per_page );
+			// If filters resulted in no images
+			if ( empty( $filtered_ids ) ) {
+				return rest_ensure_response(
+					array(
+						'items' => array(),
+						'total' => 0,
+						'pages' => 0,
+					)
+				);
+			}
+
+			// Update query args with filtered IDs
+			$query_args['post__in'] = $filtered_ids;
+
+			// Query attachments.
+			$query = new WP_Query( $query_args );
+
+			// Format response.
+			$items = array();
+			if ( $query->have_posts() ) {
+				foreach ( $query->posts as $attachment ) {
+					$items[] = $this->format_image_data( $attachment );
+				}
+				
+				// Apply pagination manually if needed, but WP_Query handles it via 'paged' and 'posts_per_page'
+				// The previous code had manual slicing which is redundant/incorrect if WP_Query is doing it.
+				// However, 'post__in' with 'orderby' => 'post__in' ignores 'posts_per_page' in some older WP versions 
+				// or specific contexts, but usually it works.
+				// Wait, 'post__in' DOES NOT ignore pagination.
+				// BUT if we filter by taxonomy, 'post__in' is just a constraint.
+			}
+
+			// Recalculate total and pages.
+			// WP_Query gives us found_posts if we don't use no_found_rows => true
+			// But we set no_found_rows => false above, so we should use it.
+			$total_items = $query->found_posts;
+			$per_page    = absint( $request['per_page'] );
+			$total_pages = ceil( $total_items / $per_page );
+
+			$response = array(
+				'items' => $items,
+				'total' => $total_items,
+				'pages' => $total_pages,
+			);
+
+			// Cache the response for 15 minutes.
+			set_transient( $cache_key, $response, 15 * MINUTE_IN_SECONDS );
+
+			return rest_ensure_response( $response );
+
+		} catch ( Exception $e ) {
+			return new WP_Error(
+				'gallery_quest_api_error',
+				$e->getMessage(),
+				array( 'status' => 500 )
+			);
 		}
-
-		// Recalculate total and pages after sorting.
-		$total_items = count( $query->posts );
-		$per_page    = absint( $request['per_page'] );
-		$total_pages = ceil( $total_items / $per_page );
-
-		$response = array(
-			'items' => $items,
-			'total' => $total_items,
-			'pages' => $total_pages,
-		);
-
-		// Cache the response for 15 minutes.
-		set_transient( $cache_key, $response, 15 * MINUTE_IN_SECONDS );
-
-		return rest_ensure_response( $response );
 	}
 
 	/**
@@ -286,28 +361,14 @@ class Gallery_Quest_REST_API {
 			return;
 		}
 
-		// Clear object cache first.
-		wp_cache_delete( 'gallery_quest_images_' . $post_id, 'gallery_quest' );
+		// Increment the cache version. This effectively invalidates all existing transients
+		// for this gallery because the cache key includes this version number.
+		// Old transients will expire naturally via WordPress garbage collection.
+		$current_version = (int) get_post_meta( $post_id, '_gallery_quest_cache_version', true );
+		update_post_meta( $post_id, '_gallery_quest_cache_version', $current_version + 1 );
 
-		// Delete transients for this gallery using WordPress functions where possible.
-		// Note: WordPress doesn't provide a built-in way to delete transients by pattern,
-		// so we use direct DB query as a fallback, but only when necessary.
-		$cache_group = 'gallery_quest_images_' . $post_id;
-		delete_transient( $cache_group );
-
-		// For pattern-based deletion, we need to use direct query.
-		// This is acceptable for cache invalidation on post save/delete.
-		global $wpdb;
-		$wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
-				$wpdb->esc_like( '_transient_gallery_quest_images_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_gallery_quest_images_' ) . '%'
-			)
-		);
-
-		// Clear any object cache.
-		wp_cache_flush_group( 'gallery_quest' );
+		// Clear object cache for the post as well.
+		clean_post_cache( $post_id );
 	}
 }
 

@@ -149,9 +149,15 @@ if ( $gallery_quest_show_filters && $gallery_quest_query->have_posts() ) {
 						<select
 							class="gallery-quest-filter-select"
 							data-taxonomy="<?php echo esc_attr( $gallery_quest_taxonomy ); ?>"
-							aria-label="<?php echo esc_attr( sprintf( __( 'Filter by %s', 'gallery-quest' ), $gallery_quest_data['label'] ) ); ?>"
+							aria-label="<?php
+								/* translators: %s: Filter label */
+								echo esc_attr( sprintf( __( 'Filter by %s', 'gallery-quest' ), $gallery_quest_data['label'] ) );
+							?>"
 						>
-							<option value=""><?php echo esc_html( sprintf( __( 'All %s', 'gallery-quest' ), $gallery_quest_data['label'] ) ); ?></option>
+							<option value=""><?php 
+								/* translators: %s: Filter label */
+								echo esc_html( sprintf( __( 'All %s', 'gallery-quest' ), $gallery_quest_data['label'] ) ); 
+							?></option>
 							<?php foreach ( $gallery_quest_data['terms'] as $gallery_quest_term ) : ?>
 								<option value="<?php echo esc_attr( $gallery_quest_term->slug ); ?>">
 									<?php echo esc_html( $gallery_quest_term->name ); ?>
