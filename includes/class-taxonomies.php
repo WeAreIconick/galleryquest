@@ -42,7 +42,7 @@ class Gallery_Quest_Taxonomies {
 		add_filter( 'manage_media_columns', array( $this, 'add_taxonomy_columns' ) );
 		add_action( 'manage_media_custom_column', array( $this, 'render_taxonomy_columns' ), 10, 2 );
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_taxonomy_fields' ), 10, 2 );
-		add_action( 'edit_attachment', array( $this, 'save_taxonomy_fields' ) );
+		add_filter( 'attachment_fields_to_save', array( $this, 'save_attachment_taxonomies' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_attachment_field_assets' ) );
 	}
 
@@ -96,6 +96,7 @@ class Gallery_Quest_Taxonomies {
 				'hierarchical'      => false,
 				'public'            => true,
 				'show_ui'           => true,
+				'show_in_menu'      => 'edit.php?post_type=gallery_quest', // Add to Gallery Quest menu
 				'show_admin_column' => true,
 				'show_in_nav_menus' => false,
 				'show_tagcloud'     => false,
@@ -105,7 +106,7 @@ class Gallery_Quest_Taxonomies {
 				'rewrite'           => array( 'slug' => str_replace( 'gallery_', '', $taxonomy ) ),
 			);
 
-			register_taxonomy( $taxonomy, 'attachment', wp_parse_args( $args, $defaults ) );
+			register_taxonomy( $taxonomy, array( 'attachment', 'gallery_quest' ), wp_parse_args( $args, $defaults ) );
 		}
 	}
 
@@ -196,9 +197,10 @@ class Gallery_Quest_Taxonomies {
 				}
 			}
 
-			// Create select dropdown HTML with "Add New" option
+			// Create select dropdown HTML
 			$field_html = sprintf(
-				'<select 
+				'<input type="hidden" name="attachments[%d][%s][]" value="" />
+				<select 
 					name="attachments[%d][%s][]" 
 					class="gallery-quest-taxonomy-select" 
 					id="gallery-quest-select-%s-%d"
@@ -206,42 +208,17 @@ class Gallery_Quest_Taxonomies {
 					size="5"
 					style="width: 100%%; min-height: 100px;"
 				>%s</select>
-				<div class="gallery-quest-add-term" style="margin-top: 8px;">
-					<input 
-						type="text" 
-						class="gallery-quest-new-term-input" 
-						data-taxonomy="%s"
-						data-post-id="%d"
-						placeholder="%s"
-						style="width: calc(100%% - 80px); padding: 6px 8px; border: 1px solid #8c8f94; border-radius: 3px; font-size: 14px;"
-					/>
-					<button 
-						type="button" 
-						class="button button-small gallery-quest-add-term-btn" 
-						data-taxonomy="%s"
-						data-post-id="%d"
-						style="margin-left: 4px;"
-					>%s</button>
-				</div>
 				<p class="help">%s</p>',
+				absint( $post->ID ),
+				esc_attr( $taxonomy ),
 				absint( $post->ID ),
 				esc_attr( $taxonomy ),
 				esc_attr( $taxonomy ),
 				absint( $post->ID ),
 				$options,
-				esc_attr( $taxonomy ),
-				absint( $post->ID ),
-				esc_attr( sprintf( 
-					/* translators: %s: Taxonomy label (lowercase) */
-					__( 'Add new %s...', 'gallery-quest' ), 
-					strtolower( $label ) 
-				) ),
-				esc_attr( $taxonomy ),
-				absint( $post->ID ),
-				esc_html__( 'Add', 'gallery-quest' ),
 				esc_html( sprintf(
 					/* translators: %s: Taxonomy name (lowercase) */
-					__( 'Hold Ctrl/Cmd to select multiple %s. Use the field below to add new terms.', 'gallery-quest' ),
+					__( 'Hold Ctrl/Cmd to select multiple %s.', 'gallery-quest' ),
 					strtolower( $label )
 				) )
 			);
@@ -341,86 +318,45 @@ class Gallery_Quest_Taxonomies {
 	}
 
 	/**
-	 * Save taxonomy fields from attachment edit screen.
+	 * Save taxonomy fields via attachment_fields_to_save filter.
 	 *
-	 * @param int $post_id Post ID.
+	 * @param array $post       The post data to be saved.
+	 * @param array $attachment The submitted attachment fields.
+	 * @return array The post data.
 	 */
-	public function save_taxonomy_fields( $post_id ) {
-		try {
-			// Check if we have the compat nonce - this confirms we're in a context that supports this save method.
-			if ( ! isset( $_POST['save-attachment-compat'] ) ) {
-				return;
-			}
+	public function save_attachment_taxonomies( $post, $attachment ) {
+		$taxonomies = array( 'gallery_character', 'gallery_artist', 'gallery_rarity' );
 
-			// Verify nonce for attachment edit form.
-			// Use safe verify to prevent crashes if input is malformed
-			$nonce = isset( $_POST['save-attachment-compat'] ) ? sanitize_text_field( wp_unslash( $_POST['save-attachment-compat'] ) ) : '';
-			if ( ! wp_verify_nonce( $nonce, 'update-attachment_' . $post_id ) ) {
-				return;
-			}
-
-			// Check user capabilities.
-			if ( ! current_user_can( 'edit_post', $post_id ) ) {
-				return;
-			}
-
-			// Ensure attachments array exists in POST
-			if ( ! isset( $_POST['attachments'] ) || ! is_array( $_POST['attachments'] ) ) {
-				return;
-			}
-
-			// Ensure specific post data exists
-			if ( ! isset( $_POST['attachments'][ $post_id ] ) || ! is_array( $_POST['attachments'][ $post_id ] ) ) {
-				return;
-			}
-
-			$taxonomies = array( 'gallery_character', 'gallery_artist', 'gallery_rarity' );
-
-			foreach ( $taxonomies as $taxonomy ) {
-				if ( isset( $_POST['attachments'][ $post_id ][ $taxonomy ] ) ) {
-					$input_value = wp_unslash( $_POST['attachments'][ $post_id ][ $taxonomy ] );
-					
-					// Handle array input (multiple select)
-					if ( is_array( $input_value ) ) {
-						// Sanitize array of IDs
-						$term_ids = array_map( 'absint', $input_value );
-						$term_ids = array_filter( $term_ids ); // Remove 0s and empty values
-
-						if ( ! empty( $term_ids ) ) {
-							wp_set_object_terms( $post_id, $term_ids, $taxonomy );
-						} else {
-							wp_set_object_terms( $post_id, array(), $taxonomy );
-						}
-					} 
-					// Handle single value fallback
-					else {
-						// Sanitize single ID
-						$term_id = absint( $input_value );
-						if ( $term_id > 0 ) {
-							wp_set_object_terms( $post_id, array( $term_id ), $taxonomy );
-						} else {
-							wp_set_object_terms( $post_id, array(), $taxonomy );
-						}
-					}
+		foreach ( $taxonomies as $taxonomy ) {
+			if ( isset( $attachment[ $taxonomy ] ) ) {
+				// The input might be slashed if it came from $_POST in specific contexts,
+				// but usually WP core unslashes before this filter if using media_handle_upload,
+				// BUT in wp_ajax_save_attachment_compat, it passes raw $_POST['attachments'].
+				// To be safe, we can unslash, but wp_set_object_terms takes IDs (ints) anyway.
+				
+				// Normalize input
+				$input = $attachment[ $taxonomy ];
+				if ( ! is_array( $input ) ) {
+					$input = array( $input );
 				}
-			}
 
-			// Save card number
-			if ( isset( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) ) {
-				$card_number = sanitize_text_field( wp_unslash( $_POST['attachments'][ $post_id ]['gallery_quest_card_number'] ) );
-				if ( $card_number !== '' ) {
-					update_post_meta( $post_id, '_gallery_quest_card_number', $card_number );
-				} else {
-					delete_post_meta( $post_id, '_gallery_quest_card_number' );
-				}
+				$term_ids = array_map( 'absint', $input );
+				$term_ids = array_filter( $term_ids ); // Remove 0s and empty values
+
+				wp_set_object_terms( $post['ID'], $term_ids, $taxonomy );
 			}
-		} catch ( Throwable $t ) {
-			// Silently fail on errors to prevent 500 response
-			// In development, you might want to log this: error_log( $t->getMessage() );
-			return;
-		} catch ( Exception $e ) {
-			// Fallback for PHP < 7
-			return;
 		}
+
+		// Save card number
+		if ( isset( $attachment['gallery_quest_card_number'] ) ) {
+			$card_number = sanitize_text_field( wp_unslash( $attachment['gallery_quest_card_number'] ) );
+			if ( $card_number !== '' ) {
+				update_post_meta( $post['ID'], '_gallery_quest_card_number', $card_number );
+			} else {
+				delete_post_meta( $post['ID'], '_gallery_quest_card_number' );
+			}
+		}
+
+		return $post;
 	}
 }

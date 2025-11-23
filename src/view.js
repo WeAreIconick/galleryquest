@@ -33,24 +33,39 @@ function initGalleryQuest() {
 			return;
 		}
 
-		// Initialize PhotoSwipe
-		const lightbox = new PhotoSwipeLightbox({
-			gallery: `#${blockId}`,
-			children: '.gallery-quest-item-link',
-			pswpModule: () => import('photoswipe'),
-			arrowPrev: false,
-			arrowNext: false,
-			paddingFn: (viewportSize) => {
-				return {
-					top: 30,
-					bottom: 30,
-					left: 70,
-					right: 70
-				};
-			},
+		// Initialize PhotoSwipe for each image individually to keep them disconnected
+		const links = block.querySelectorAll('.gallery-quest-item-link');
+		links.forEach((link) => {
+			link.addEventListener('click', (e) => {
+				e.preventDefault();
+
+				const lightbox = new PhotoSwipeLightbox({
+					dataSource: [
+						{
+							src: link.href,
+							width: parseInt(link.dataset.pswpWidth, 10),
+							height: parseInt(link.dataset.pswpHeight, 10),
+							alt: link.querySelector('img')?.alt || '',
+						}
+					],
+					pswpModule: () => import('photoswipe'),
+					arrowPrev: false,
+					arrowNext: false,
+					loop: false,
+					paddingFn: (viewportSize) => {
+						return {
+							top: 30,
+							bottom: 30,
+							left: 70,
+							right: 70
+						};
+					},
+				});
+				
+				lightbox.init();
+				lightbox.loadAndOpen(0);
+			});
 		});
-		
-		lightbox.init();
 
 		// Initialize filtering if enabled.
 		if (showFilters) {

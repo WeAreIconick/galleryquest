@@ -111,59 +111,6 @@
 				this.style.boxShadow = 'none';
 			});
 		});
-
-		// Set up "Add New" buttons
-		const addButtons = document.querySelectorAll('.gallery-quest-add-term-btn');
-		addButtons.forEach((button) => {
-			// Skip if already set up
-			if (button.dataset.gqSetup === 'true') {
-				return;
-			}
-			button.dataset.gqSetup = 'true';
-
-			button.addEventListener('click', function() {
-				const taxonomy = this.dataset.taxonomy;
-				const postId = this.dataset.postId;
-				const input = document.querySelector(`.gallery-quest-new-term-input[data-taxonomy="${taxonomy}"][data-post-id="${postId}"]`);
-				const select = document.getElementById(`gallery-quest-select-${taxonomy}-${postId}`);
-
-				if (input && select) {
-					const termName = input.value.trim();
-					if (termName) {
-						// Disable button while creating
-						button.disabled = true;
-						button.textContent = 'Adding...';
-
-						addNewTerm(taxonomy, termName, postId, select).finally(() => {
-							button.disabled = false;
-							button.textContent = 'Add';
-						});
-					}
-				}
-			});
-		});
-
-		// Set up Enter key on input fields
-		const inputs = document.querySelectorAll('.gallery-quest-new-term-input');
-		inputs.forEach((input) => {
-			// Skip if already set up
-			if (input.dataset.gqSetup === 'true') {
-				return;
-			}
-			input.dataset.gqSetup = 'true';
-
-			input.addEventListener('keydown', function(e) {
-				if (e.key === 'Enter') {
-					e.preventDefault();
-					const taxonomy = this.dataset.taxonomy;
-					const postId = this.dataset.postId;
-					const button = document.querySelector(`.gallery-quest-add-term-btn[data-taxonomy="${taxonomy}"][data-post-id="${postId}"]`);
-					if (button) {
-						button.click();
-					}
-				}
-			});
-		});
 	}
 
 	/**

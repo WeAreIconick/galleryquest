@@ -83,41 +83,37 @@
 
 	.gallery-quest-grid {
 		display: grid;
-		grid-template-columns: repeat(
-			auto-fill,
-			minmax(min(100%, max(250px, calc(100% / var(--gallery-columns, 3)))), 1fr)
-		);
+		grid-template-columns: repeat(var(--gallery-columns, 3), 1fr);
 		gap: clamp(0.5rem, 2vw, 2rem);
 		margin: 0;
 		padding: 0;
 
 		.gallery-quest-item {
-			aspect-ratio: 1 / 1;
+			// aspect-ratio: 1 / 1; /* Removed to allow original aspect ratio */
 			overflow: hidden;
 			border-radius: 8px;
 			position: relative;
 			transform: translateZ(0);
 			backface-visibility: hidden;
+			margin-bottom: 1rem; /* Add spacing for variable height items */
 
 			.gallery-quest-item-link {
 				display: block;
 				width: 100%;
-				height: 100%;
+				height: auto; /* Allow height to adjust */
 				text-decoration: none;
 
 				img {
 					width: 100%;
-					height: 100%;
-					object-fit: cover;
+					height: auto; /* Allow height to adjust */
+					object-fit: contain; /* Show full image */
 					transition: transform 0.3s ease;
 					display: block;
 				}
 			}
 
 			&:hover {
-				.gallery-quest-item-link img {
-					transform: scale(1.05);
-				}
+				/* Removed enlarge on hover effect */
 			}
 		}
 	}
@@ -134,7 +130,7 @@
 	.gallery-quest-block {
 		.gallery-quest-filters {
 			display: grid;
-			grid-template-columns: 1fr 1fr;
+			grid-template-columns: repeat(3, 1fr); /* 3 columns on mobile */
 			gap: 0.75rem;
 			align-items: end;
 
@@ -182,7 +178,7 @@
 @media (min-width: 769px) and (max-width: 1024px) {
 	.gallery-quest-block {
 		.gallery-quest-grid {
-			grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+			// grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Allow user setting to apply */
 			gap: 1.5rem;
 		}
 	}

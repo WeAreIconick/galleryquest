@@ -45,9 +45,9 @@ class Gallery_Quest_Image_Sizes {
 	 * Register custom image sizes.
 	 */
 	public function register_image_sizes(): void {
-		add_image_size( 'gallery-thumb', 300, 300, true );   // Hard crop, square thumbnail.
-		add_image_size( 'gallery-medium', 600, 400, false ); // Soft crop, medium.
-		add_image_size( 'gallery-large', 1200, 800, false ); // Soft crop, large for lightbox.
+		add_image_size( 'gallery-thumb', 300, 9999, false ); // Soft crop, width restricted.
+		add_image_size( 'gallery-medium', 600, 9999, false ); // Soft crop, width restricted.
+		add_image_size( 'gallery-large', 1200, 9999, false ); // Soft crop, width restricted.
 	}
 
 	/**
