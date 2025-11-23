@@ -2,7 +2,7 @@
 	"$schema": "https://schemas.wp.org/trunk/block.json",
 	"apiVersion": 3,
 	"name": "gallery-quest/gallery-quest",
-	"version": "1.0.0",
+	"version": "1.0.2",
 	"title": "Gallery Quest",
 	"category": "media",
 	"icon": "format-gallery",
@@ -47,6 +47,7 @@
 	"editorScript": "file:./index.js",
 	"editorStyle": "file:./index.css",
 	"style": "file:./style-index.css",
+	"viewStyle": "file:./view.css",
 	"render": "file:./render.php",
 	"viewScript": "file:./view.js"
 }

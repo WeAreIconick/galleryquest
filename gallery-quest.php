@@ -3,7 +3,7 @@
  * Plugin Name: Gallery Quest
  * Plugin URI: https://iconick.io
  * Description: A filterable gallery block plugin for WordPress. Each gallery post contains multiple images, and each image can have its own taxonomies for filtering.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Iconick
  * Author URI: https://iconick.io
  * License: GPL-2.0-or-later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'GALLERY_QUEST_VERSION', '1.0.0' );
+define( 'GALLERY_QUEST_VERSION', '1.0.2' );
 define( 'GALLERY_QUEST_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GALLERY_QUEST_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -114,13 +114,11 @@ class Gallery_Quest {
 		}
 
 		// Initialize admin meta panel.
-		// CRITICAL FIX: Must be initialized globally (not just is_admin()) 
-		// so that register_rest_field/register_post_meta runs during REST API requests.
 		if ( class_exists( 'Gallery_Quest_Meta_Panel' ) ) {
 			Gallery_Quest_Meta_Panel::get_instance();
 		}
 
-		// Register block from build directory (where compiled assets are).
+		// Register block from build directory.
 		$block_path = GALLERY_QUEST_PLUGIN_DIR . 'build';
 		if ( file_exists( $block_path . '/block.json' ) ) {
 			register_block_type( $block_path );
@@ -128,6 +126,43 @@ class Gallery_Quest {
 
 		// Localize script for frontend.
 		add_action( 'wp_enqueue_scripts', array( $this, 'localize_frontend_script' ) );
+		
+		// Manually enqueue view styles as fallback/guarantee
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_styles' ) );
+	}
+
+	/**
+	 * Enqueue frontend styles and scripts manually.
+	 */
+	public function enqueue_frontend_styles(): void {
+		if ( has_block( 'gallery-quest/gallery-quest' ) ) {
+			$view_css_path = GALLERY_QUEST_PLUGIN_DIR . 'build/view.css';
+			$view_css_url  = GALLERY_QUEST_PLUGIN_URL . 'build/view.css';
+
+			if ( file_exists( $view_css_path ) ) {
+				wp_enqueue_style(
+					'gallery-quest-view-style-manual',
+					$view_css_url,
+					array(),
+					GALLERY_QUEST_VERSION
+				);
+			}
+
+			// Manually enqueue view script if not loaded by block.json
+			$view_js_path = GALLERY_QUEST_PLUGIN_DIR . 'build/view.js';
+			$view_js_url  = GALLERY_QUEST_PLUGIN_URL . 'build/view.js';
+			$asset_file   = include GALLERY_QUEST_PLUGIN_DIR . 'build/view.asset.php';
+
+			if ( file_exists( $view_js_path ) ) {
+				wp_enqueue_script(
+					'gallery-quest-view-script-manual',
+					$view_js_url,
+					$asset_file['dependencies'],
+					GALLERY_QUEST_VERSION,
+					true
+				);
+			}
+		}
 	}
 
 	/**
@@ -159,4 +194,3 @@ function gallery_quest_init() {
 
 // Start the plugin.
 gallery_quest_init();
-

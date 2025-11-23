@@ -167,16 +167,6 @@ if ( $gallery_quest_show_filters && $gallery_quest_query->have_posts() ) {
 					<?php esc_html_e( 'Clear All Filters', 'gallery-quest' ); ?>
 				</button>
 			</div>
-
-			<div class="gallery-quest-results-count" role="status" aria-live="polite">
-				<?php
-				printf(
-					/* translators: %d: Number of images */
-					esc_html__( 'Showing %d images', 'gallery-quest' ),
-					esc_html( $gallery_quest_query->post_count )
-				);
-				?>
-			</div>
 		</div>
 	<?php endif; ?>
 
@@ -188,6 +178,9 @@ if ( $gallery_quest_show_filters && $gallery_quest_query->have_posts() ) {
 				$gallery_quest_attachment_id = get_the_ID();
 				$gallery_quest_image_url     = wp_get_attachment_image_url( $gallery_quest_attachment_id, 'gallery-medium' );
 				$gallery_quest_full_url      = wp_get_attachment_image_url( $gallery_quest_attachment_id, 'full' );
+				$gallery_quest_image_meta    = wp_get_attachment_metadata( $gallery_quest_attachment_id );
+				$gallery_quest_width         = isset( $gallery_quest_image_meta['width'] ) ? $gallery_quest_image_meta['width'] : 0;
+				$gallery_quest_height        = isset( $gallery_quest_image_meta['height'] ) ? $gallery_quest_image_meta['height'] : 0;
 				$gallery_quest_alt_text      = get_post_meta( $gallery_quest_attachment_id, '_wp_attachment_image_alt', true );
 				$gallery_quest_title         = get_the_title( $gallery_quest_attachment_id );
 
@@ -218,9 +211,9 @@ if ( $gallery_quest_show_filters && $gallery_quest_query->have_posts() ) {
 					<a
 						href="<?php echo esc_url( $gallery_quest_full_url ); ?>"
 						class="gallery-quest-item-link"
-						data-title="<?php echo esc_attr( $gallery_quest_title ); ?>"
-						data-description="<?php echo esc_attr( $gallery_quest_alt_text ); ?>"
-						data-gallery="<?php echo esc_attr( $gallery_quest_unique_id ); ?>"
+						data-pswp-width="<?php echo esc_attr( $gallery_quest_width ); ?>"
+						data-pswp-height="<?php echo esc_attr( $gallery_quest_height ); ?>"
+						target="_blank"
 					>
 						<?php
 						echo wp_get_attachment_image(

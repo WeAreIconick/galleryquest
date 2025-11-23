@@ -4,16 +4,26 @@
  * @package
  */
 
-import GLightbox from 'glightbox';
-import 'glightbox/dist/css/glightbox.css';
+import PhotoSwipeLightbox from 'photoswipe/lightbox';
+import 'photoswipe/style.css';
 
 /**
  * Initialize gallery functionality.
  */
-document.addEventListener('DOMContentLoaded', () => {
+function initGalleryQuest() {
 	const galleryBlocks = document.querySelectorAll('.gallery-quest-block');
 
+	if (!galleryBlocks.length) {
+		return;
+	}
+
 	galleryBlocks.forEach((block) => {
+		// Check if already initialized
+		if (block.dataset.gqInitialized === 'true') {
+			return;
+		}
+		block.dataset.gqInitialized = 'true';
+
 		const { galleryId } = block.dataset;
 		const blockId = block.id;
 		const showFilters = block.dataset.showFilters === 'true';
@@ -23,25 +33,37 @@ document.addEventListener('DOMContentLoaded', () => {
 			return;
 		}
 
-		// Initialize GLightbox.
-		// Use the block ID to scope the selector to this specific block.
-		// This prevents issues with multiple galleries on the same page.
-		const lightbox = GLightbox({
-			selector: `#${blockId} .gallery-quest-item-link`,
-			touchNavigation: true,
-			loop: true,
-			zoomable: true,
-			draggable: true,
-			closeOnOutsideClick: true,
-			keyboardNavigation: true,
+		// Initialize PhotoSwipe
+		const lightbox = new PhotoSwipeLightbox({
+			gallery: `#${blockId}`,
+			children: '.gallery-quest-item-link',
+			pswpModule: () => import('photoswipe'),
+			arrowPrev: false,
+			arrowNext: false,
+			paddingFn: (viewportSize) => {
+				return {
+					top: 30,
+					bottom: 30,
+					left: 70,
+					right: 70
+				};
+			},
 		});
+		
+		lightbox.init();
 
 		// Initialize filtering if enabled.
 		if (showFilters) {
 			initFiltering(block, galleryId, filterLogic);
 		}
 	});
-});
+}
+
+// Initialize on DOM content loaded
+document.addEventListener('DOMContentLoaded', initGalleryQuest);
+
+// Re-initialize on cache hits/AJAX loads (e.g., infinite scroll, PJAX)
+window.addEventListener('load', initGalleryQuest);
 
 /**
  * Initialize filtering functionality.
